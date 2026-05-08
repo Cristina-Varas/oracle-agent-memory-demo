@@ -12,7 +12,16 @@ export type MemoryRecord = {
 
 export type ChatResponse = {
   answer: string;
-  sources: MemoryRecord[];
+  used_memories: UsedMemory[];
+};
+
+export type UsedMemory = {
+  title: string;
+  category: string;
+  customer_project: string | null;
+  source: string | null;
+  score: number | null;
+  content_preview: string;
 };
 
 export type NewMemory = {
@@ -25,11 +34,13 @@ export type NewMemory = {
 };
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_KEY = import.meta.env.VITE_AGENT_MEMORY_API_KEY ?? "";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(API_KEY ? { "X-API-Key": API_KEY } : {}),
       ...(options?.headers ?? {}),
     },
     ...options,
@@ -69,7 +80,9 @@ export function createMemory(payload: NewMemory) {
 }
 
 export function listMemories(limit = 50) {
-  return request<MemoryRecord[]>(`/memories?limit=${limit}`);
+  return request<{ count: number; memories: MemoryRecord[] }>(`/memories?limit=${limit}`).then(
+    (response) => response.memories,
+  );
 }
 
 export function searchMemories(params: {

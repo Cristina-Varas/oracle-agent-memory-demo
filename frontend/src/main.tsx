@@ -16,6 +16,7 @@ import {
 import {
   ChatResponse,
   MemoryRecord,
+  UsedMemory,
   chatWithMemory,
   createMemory,
   deleteMemory,
@@ -313,7 +314,7 @@ function ChatView({ categories }: { categories: string[] }) {
         customer_project: cleanOptional(project),
       });
       setResponse(next);
-      setState({ status: "success", message: `${next.sources.length} source(s)` });
+      setState({ status: "success", message: `${next.used_memories.length} source(s)` });
     } catch (error) {
       setState({ status: "error", message: getErrorMessage(error) });
     }
@@ -358,7 +359,7 @@ function ChatView({ categories }: { categories: string[] }) {
           </section>
           <section>
             <h3>Sources</h3>
-            <MemoryList records={response.sources} compact />
+            <UsedMemoryList records={response.used_memories} />
           </section>
         </div>
       )}
@@ -533,6 +534,33 @@ function MemoryList({ records, compact = false }: { records: MemoryRecord[]; com
     <div className={`memory-list ${compact ? "compact" : ""}`}>
       {content.map((record) => (
         <MemoryCard key={record.memory_id} record={record} />
+      ))}
+    </div>
+  );
+}
+
+function UsedMemoryList({ records }: { records: UsedMemory[] }) {
+  if (!records.length) {
+    return <div className="empty-state">No sources</div>;
+  }
+
+  return (
+    <div className="memory-list compact">
+      {records.map((record, index) => (
+        <article className="memory-card" key={`${record.title}-${index}`}>
+          <div className="memory-card-top">
+            <div>
+              <h3>{record.title}</h3>
+              <p>{record.category}</p>
+            </div>
+          </div>
+          <p className="memory-content">{record.content_preview}</p>
+          <div className="meta-row">
+            {record.customer_project && <span>{record.customer_project}</span>}
+            {record.source && <span>{record.source}</span>}
+            {record.score !== null && <span>Score {record.score.toFixed(3)}</span>}
+          </div>
+        </article>
       ))}
     </div>
   );

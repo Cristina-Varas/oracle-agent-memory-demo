@@ -45,9 +45,16 @@ Optional:
 
 ```env
 MEMORY_TABLE_PREFIX=APP_
+AGENT_MEMORY_API_KEY=
 ```
 
 The application uses `APP_` tables by default. The existing smoke tests keep their own demo prefixes.
+
+`AGENT_MEMORY_API_KEY` enables simple API key protection for FastAPI. When it is empty, requests are allowed for local development and the API prints a startup warning. When it has a value, every API request must include:
+
+```text
+X-API-Key: your-key
+```
 
 ## Install
 
@@ -81,6 +88,12 @@ Start the FastAPI backend:
 uvicorn api:app --host localhost --port 8000
 ```
 
+For Oracle APEX or another machine on your network, bind to all interfaces:
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+```
+
 In another terminal, start the React frontend:
 
 ```bash
@@ -101,6 +114,12 @@ The React app calls the API at `http://localhost:8000` by default. To point it s
 VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
+If `AGENT_MEMORY_API_KEY` is enabled in the backend, pass the same key to the frontend:
+
+```bash
+VITE_AGENT_MEMORY_API_KEY=your-key npm run dev
+```
+
 ## Run The Streamlit Demo
 
 ```bash
@@ -115,3 +134,169 @@ Both UIs support:
 - Manage Memories
 
 Chat is read-only. It searches existing memories and sends that context to the chat model, but it never creates or updates memory records.
+
+## FastAPI Endpoints
+
+Interactive docs:
+
+```text
+http://localhost:8000/docs
+```
+
+Core endpoints:
+
+```text
+GET    /health
+POST   /memories
+GET    /memories
+POST   /search
+POST   /chat
+DELETE /memories/{memory_id}
+```
+
+All error responses use this JSON shape:
+
+```json
+{
+  "error": "Bad request",
+  "detail": "Unsupported category: Example"
+}
+```
+
+### Test Health
+
+Without API key in local development:
+
+```bash
+curl http://localhost:8000/health
+```
+
+With API key enabled:
+
+```bash
+curl -H "X-API-Key: your-key" http://localhost:8000/health
+```
+
+### Create Memory
+
+```bash
+curl -X POST http://localhost:8000/memories \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{
+    "title": "Customer follow-up",
+    "content": "Customer asked for a follow-up session on AI Vector Search and Agent Memory.",
+    "category": "Follow-up / Next Steps",
+    "customer_project": "Example Customer",
+    "tags": ["follow-up", "vector-search"],
+    "source": "meeting"
+  }'
+```
+
+Response:
+
+```json
+{
+  "memory_id": "mem_example",
+  "status": "created"
+}
+```
+
+### Search Memories
+
+```bash
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{
+    "query": "AI Vector Search follow-up",
+    "category": "Follow-up / Next Steps",
+    "customer_project": "Example Customer",
+    "tags": ["follow-up"],
+    "limit": 10
+  }'
+```
+
+Response:
+
+```json
+{
+  "count": 1,
+  "memories": [
+    {
+      "memory_id": "mem_example",
+      "title": "Customer follow-up",
+      "content": "Customer asked for a follow-up session on AI Vector Search and Agent Memory.",
+      "category": "Follow-up / Next Steps",
+      "customer_project": "Example Customer",
+      "tags": ["follow-up", "vector-search"],
+      "source": "meeting",
+      "created_at": "2026-05-08T11:00:00+00:00",
+      "score": null
+    }
+  ]
+}
+```
+
+### Chat With Memory
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{
+    "question": "What follow-up did the customer ask for?",
+    "category": "Follow-up / Next Steps",
+    "customer_project": "Example Customer"
+  }'
+```
+
+Response:
+
+```json
+{
+  "answer": "The customer asked for a follow-up session on AI Vector Search and Agent Memory.",
+  "used_memories": [
+    {
+      "title": "Customer follow-up",
+      "category": "Follow-up / Next Steps",
+      "customer_project": "Example Customer",
+      "source": "meeting",
+      "score": null,
+      "content_preview": "Customer asked for a follow-up session on AI Vector Search and Agent Memory."
+    }
+  ]
+}
+```
+
+## Oracle APEX Consumption
+
+Use APEX **Shared Components > Web Source Modules** or `APEX_WEB_SERVICE` to call the FastAPI service.
+
+Recommended APEX setup:
+
+- Base URL: `http://your-api-host:8000`
+- Authentication: HTTP Header
+- Header name: `X-API-Key`
+- Header value: the same value as `AGENT_MEMORY_API_KEY`
+- Content type for POST requests: `application/json`
+
+APEX Web Source operations:
+
+- Health check: `GET /health`
+- Create memory: `POST /memories`
+- Search report source: `POST /search`, parse `memories`
+- Chat process: `POST /chat`, parse `answer` and `used_memories`
+- Delete action: `DELETE /memories/{memory_id}`
+
+For APEX reports, point the row selector to:
+
+```text
+memories
+```
+
+For chat source details, point the row selector to:
+
+```text
+used_memories
+```

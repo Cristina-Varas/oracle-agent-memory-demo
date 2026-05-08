@@ -2,7 +2,9 @@ import os
 from pathlib import Path
 
 import oci
+from dotenv import load_dotenv
 
+load_dotenv()
 CONFIG_FILE = Path(os.getenv("OCI_CONFIG_FILE", "~/.oci/config")).expanduser()
 
 
