@@ -125,6 +125,7 @@ class DeleteResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+    service: str
 
 
 class CategoriesResponse(BaseModel):
@@ -185,7 +186,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     description="Lightweight health check for load balancers, APEX Web Source validation, and local testing.",
 )
 def health(_: None = api_key_dependency) -> HealthResponse:
-    return HealthResponse(status="ok")
+    return HealthResponse(status="ok", service="Oracle Agent Memory API")
 
 
 @app.get(
@@ -200,7 +201,7 @@ def deep_health(_: None = api_key_dependency) -> HealthResponse:
         get_memory_client()
     except Exception as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return HealthResponse(status="ok")
+    return HealthResponse(status="ok", service="Oracle Agent Memory API")
 
 
 @app.get(
