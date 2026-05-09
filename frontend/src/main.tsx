@@ -2,10 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Archive,
+  BookOpen,
   Bot,
   Check,
   CircleAlert,
   Database,
+  ExternalLink,
+  Home,
   Loader2,
   MessageSquareText,
   Plus,
@@ -27,7 +30,7 @@ import {
 } from "./api";
 import "./styles.css";
 
-type View = "add" | "search" | "chat" | "manage";
+type View = "home" | "add" | "search" | "chat" | "manage";
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -57,7 +60,7 @@ function cleanOptional(value: string) {
 }
 
 function App() {
-  const [view, setView] = useState<View>("add");
+  const [view, setView] = useState<View>("home");
   const [categories, setCategories] = useState(fallbackCategories);
   const [apiStatus, setApiStatus] = useState<"checking" | "ok" | "down">("checking");
 
@@ -84,6 +87,12 @@ function App() {
         </div>
 
         <nav className="nav-stack" aria-label="Main navigation">
+          <NavButton
+            active={view === "home"}
+            icon={<Home size={18} />}
+            label="Home"
+            onClick={() => setView("home")}
+          />
           <NavButton
             active={view === "add"}
             icon={<Plus size={18} />}
@@ -117,6 +126,7 @@ function App() {
       </aside>
 
       <main className="workspace">
+        {view === "home" && <HomeView onNavigate={setView} />}
         {view === "add" && <AddMemoryView categories={categories} />}
         {view === "search" && <SearchView categories={categories} />}
         {view === "chat" && <ChatView categories={categories} />}
@@ -142,6 +152,132 @@ function NavButton({
       {icon}
       <span>{label}</span>
     </button>
+  );
+}
+
+function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
+  return (
+    <section className="home-page">
+      <header className="home-title">
+        <div className="home-logo">
+          <Database size={28} />
+        </div>
+        <div>
+          <p className="eyebrow">Oracle Agent Memory Workspace</p>
+          <h2>Persistent memory for AI agents</h2>
+        </div>
+      </header>
+
+      <section className="home-hero">
+        <div>
+          <span className="home-pill">Oracle Agent Memory</span>
+          <h3>Capture project knowledge once. Retrieve it when the agent needs context.</h3>
+          <p>
+            This workspace stores structured, long-term memory for customer engagements,
+            architecture decisions, technical issues, demos and follow-up actions. The chat
+            experience is read-only: it retrieves saved memory, grounds the answer with
+            sources, and never writes new memory automatically.
+          </p>
+        </div>
+        <div className="home-hero-actions">
+          <button className="primary-button" onClick={() => onNavigate("add")}>
+            <Plus size={18} />
+            Add Memory
+          </button>
+          <button className="secondary-button" onClick={() => onNavigate("chat")}>
+            <MessageSquareText size={18} />
+            Chat
+          </button>
+        </div>
+      </section>
+
+      <section className="home-info-grid">
+        <article className="home-info-card">
+          <h3>What is Oracle Agent Memory?</h3>
+          <p>
+            Oracle Agent Memory provides a persistent memory layer for AI agents. Instead of
+            starting from scratch in every interaction, an agent can store, retrieve and reuse
+            knowledge across sessions and workflows.
+          </p>
+          <p>
+            In this demo, memory is persisted in Oracle Autonomous Database, indexed with OCI
+            Generative AI embeddings, and retrieved semantically through Oracle Agent Memory.
+          </p>
+        </article>
+        <article className="home-info-card">
+          <h3>What can you do here?</h3>
+          <ul>
+            <li>Store customer, project and platform memories.</li>
+            <li>Search knowledge with semantic retrieval and filters.</li>
+            <li>Ask natural language questions over saved memory.</li>
+            <li>Review sources used by each answer.</li>
+            <li>Manage and delete memory records explicitly.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section className="home-card-grid">
+        <button className="home-nav-card" onClick={() => onNavigate("add")}>
+          <Plus size={19} />
+          <span>Add Memory</span>
+          <p>Capture decisions, notes, issues and next steps.</p>
+        </button>
+        <button className="home-nav-card" onClick={() => onNavigate("search")}>
+          <Search size={19} />
+          <span>Search Memories</span>
+          <p>Find relevant knowledge across categories and projects.</p>
+        </button>
+        <button className="home-nav-card" onClick={() => onNavigate("chat")}>
+          <Bot size={19} />
+          <span>Chat with Memory</span>
+          <p>Ask questions grounded in stored memories.</p>
+        </button>
+        <button className="home-nav-card" onClick={() => onNavigate("manage")}>
+          <Archive size={19} />
+          <span>Manage Memories</span>
+          <p>Review recent memory records and delete them when needed.</p>
+        </button>
+      </section>
+
+      <section className="home-docs">
+        <div>
+          <p className="eyebrow">Official Oracle resources</p>
+          <h3>Documentation and product links</h3>
+        </div>
+        <div className="doc-link-row">
+          <a
+            className="doc-link"
+            href="https://docs.oracle.com/en/database/oracle/agent-memory/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <BookOpen size={18} />
+            Oracle Agent Memory docs
+            <ExternalLink size={15} />
+          </a>
+          <a
+            className="doc-link"
+            href="https://www.oracle.com/artificial-intelligence/ai-agent-memory/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Database size={18} />
+            Product overview
+            <ExternalLink size={15} />
+          </a>
+          <a
+            className="doc-link"
+            href="https://docs.oracle.com/en/database/oracle/agent-memory/26.4/agmea/run-locally.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <BookOpen size={18} />
+            Run locally guide
+            <ExternalLink size={15} />
+          </a>
+        </div>
+      </section>
+    </section>
   );
 }
 
