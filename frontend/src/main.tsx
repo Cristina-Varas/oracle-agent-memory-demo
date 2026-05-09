@@ -28,6 +28,11 @@ import {
 import "./styles.css";
 
 type View = "add" | "search" | "chat" | "manage";
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  sources?: UsedMemory[];
+};
 
 const fallbackCategories = [
   "Customer Engagement",
@@ -301,68 +306,114 @@ function ChatView({ categories }: { categories: string[] }) {
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState("");
   const [project, setProject] = useState("");
-  const [response, setResponse] = useState<ChatResponse | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      role: "assistant",
+      content:
+        "Ask me about saved memories. I will answer from the memory store and show the sources I used.",
+    },
+  ]);
   const [state, setState] = useState<AsyncState>({ status: "idle" });
+  const latestSources = [...messages].reverse().find((message) => message.sources?.length)?.sources ?? [];
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    const nextQuestion = question.trim();
+    if (!nextQuestion) return;
+
     setState({ status: "loading" });
+    setQuestion("");
+    setMessages((current) => [...current, { role: "user", content: nextQuestion }]);
     try {
       const next = await chatWithMemory({
-        question,
+        question: nextQuestion,
         category: cleanOptional(category),
         customer_project: cleanOptional(project),
       });
-      setResponse(next);
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: toPlainAnswer(next.answer),
+          sources: next.used_memories,
+        },
+      ]);
       setState({ status: "success", message: `${next.used_memories.length} source(s)` });
     } catch (error) {
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: getErrorMessage(error),
+        },
+      ]);
       setState({ status: "error", message: getErrorMessage(error) });
     }
   }
 
   return (
-    <section className="view-grid chat-grid">
+    <section className="view-grid chat-page">
       <header className="view-header">
         <div>
-          <p className="eyebrow">Read only</p>
+          <p className="eyebrow">Conversational read only</p>
           <h2>Chat with Memory</h2>
         </div>
         <StateBadge state={state} />
       </header>
-      <form className="chat-composer" onSubmit={submit}>
-        <textarea value={question} onChange={(event) => setQuestion(event.target.value)} required />
-        <div className="field-row three">
-          <Field label="Category">
-            <select value={category} onChange={(event) => setCategory(event.target.value)}>
-              <option value="">Any</option>
-              {categories.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Project">
-            <input value={project} onChange={(event) => setProject(event.target.value)} />
-          </Field>
-          <div className="submit-cell">
+
+      <div className="conversation-shell">
+        <section className="conversation-panel">
+          <div className="chat-filters">
+            <Field label="Category">
+              <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="">Any</option>
+                {categories.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Project">
+              <input value={project} onChange={(event) => setProject(event.target.value)} />
+            </Field>
+          </div>
+          <div className="message-list">
+            {messages.map((message, index) => (
+              <ChatBubble key={`${message.role}-${index}`} message={message} />
+            ))}
+            {state.status === "loading" && (
+              <div className="message-row assistant">
+                <div className="avatar">
+                  <Bot size={17} />
+                </div>
+                <div className="message-bubble assistant-bubble">
+                  <Loader2 size={17} className="spin" />
+                  Thinking with memory...
+                </div>
+              </div>
+            )}
+          </div>
+          <form className="conversation-composer" onSubmit={submit}>
+            <textarea
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="Ask about your saved memories"
+              required
+            />
             <button className="primary-button" disabled={state.status === "loading"}>
               {state.status === "loading" ? <Loader2 size={18} className="spin" /> : <MessageSquareText size={18} />}
-              Ask
+              Send
             </button>
-          </div>
-        </div>
-      </form>
-      {response && (
-        <div className="chat-output">
-          <section className="answer-panel">
-            <h3>Answer</h3>
-            <p>{response.answer}</p>
-          </section>
-          <section>
+          </form>
+        </section>
+
+        <aside className="source-panel">
+          <div className="source-panel-header">
             <h3>Sources</h3>
-            <UsedMemoryList records={response.used_memories} />
-          </section>
-        </div>
-      )}
+            <span>{latestSources.length}</span>
+          </div>
+          <UsedMemoryList records={latestSources} />
+        </aside>
+      </div>
     </section>
   );
 }
@@ -566,6 +617,22 @@ function UsedMemoryList({ records }: { records: UsedMemory[] }) {
   );
 }
 
+function ChatBubble({ message }: { message: ChatMessage }) {
+  return (
+    <div className={`message-row ${message.role}`}>
+      <div className="avatar">
+        {message.role === "assistant" ? <Bot size={17} /> : <span>{userInitial()}</span>}
+      </div>
+      <div className={`message-bubble ${message.role}-bubble`}>
+        <p>{message.content}</p>
+        {!!message.sources?.length && (
+          <div className="message-source-count">{message.sources.length} source(s)</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MemoryCard({ record }: { record: MemoryRecord }) {
   return (
     <article className="memory-card">
@@ -602,6 +669,20 @@ function formatDate(value: string | null) {
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected error";
+}
+
+function toPlainAnswer(value: string) {
+  return value
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .replace(/^\s*\d+\.\s+/gm, "")
+    .trim();
+}
+
+function userInitial() {
+  return "C";
 }
 
 createRoot(document.getElementById("root")!).render(

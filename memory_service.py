@@ -215,6 +215,8 @@ def chat_with_memory(
 You are a practical assistant answering from the saved Oracle Agent Memory records.
 Use only the memory context below. If the answer is not present, say that the saved
 memory does not contain enough information.
+Write in plain text only. Do not use Markdown, bullet syntax, numbered lists,
+asterisks, backticks, tables, headings, or bold formatting. Use short paragraphs.
 
 Memory context:
 {context}
@@ -229,7 +231,7 @@ Question:
         raise MemoryServiceError(f"Could not generate chat response: {exc}") from exc
 
     return {
-        "answer": response.text,
+        "answer": _plain_text(response.text),
         "sources": sources,
     }
 
@@ -522,3 +524,25 @@ def _lob_to_text(value: Any) -> str:
     if hasattr(value, "read"):
         return value.read()
     return str(value)
+
+
+def _plain_text(value: str) -> str:
+    replacements = (
+        ("**", ""),
+        ("__", ""),
+        ("`", ""),
+    )
+    text = value
+    for old, new in replacements:
+        text = text.replace(old, new)
+    lines = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(("- ", "* ")):
+            stripped = stripped[2:].strip()
+        if len(stripped) > 3 and stripped[0].isdigit() and ". " in stripped[:4]:
+            stripped = stripped.split(". ", 1)[1].strip()
+        if stripped.startswith("#"):
+            stripped = stripped.lstrip("#").strip()
+        lines.append(stripped)
+    return "\n".join(lines).strip()
