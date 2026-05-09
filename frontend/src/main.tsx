@@ -14,10 +14,12 @@ import {
   Plus,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import {
   ChatResponse,
+  ModelConfig,
   MemoryRecord,
   UsedMemory,
   chatWithMemory,
@@ -25,12 +27,14 @@ import {
   deleteMemory,
   getCategories,
   getHealth,
+  getModelConfig,
   listMemories,
   searchMemories,
+  updateChatModel,
 } from "./api";
 import "./styles.css";
 
-type View = "home" | "add" | "search" | "chat" | "manage";
+type View = "home" | "add" | "search" | "chat" | "manage" | "models";
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -117,6 +121,12 @@ function App() {
             label="Manage"
             onClick={() => setView("manage")}
           />
+          <NavButton
+            active={view === "models"}
+            icon={<SlidersHorizontal size={18} />}
+            label="Models"
+            onClick={() => setView("models")}
+          />
         </nav>
 
         <div className={`status-pill ${apiStatus}`}>
@@ -131,6 +141,7 @@ function App() {
         {view === "search" && <SearchView categories={categories} />}
         {view === "chat" && <ChatView categories={categories} />}
         {view === "manage" && <ManageView />}
+        {view === "models" && <ModelsView />}
       </main>
     </div>
   );
@@ -236,6 +247,11 @@ function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
           <Archive size={19} />
           <span>Manage Memories</span>
           <p>Review recent memory records and delete them when needed.</p>
+        </button>
+        <button className="home-nav-card" onClick={() => onNavigate("models")}>
+          <SlidersHorizontal size={19} />
+          <span>Models</span>
+          <p>Review OCI GenAI settings and switch the active chat LLM.</p>
         </button>
       </section>
 
@@ -666,6 +682,169 @@ function ManageView() {
           </div>
         </div>
       )}
+    </section>
+  );
+}
+
+function ModelsView() {
+  const [config, setConfig] = useState<ModelConfig | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [provider, setProvider] = useState("cohere");
+  const [customModelId, setCustomModelId] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
+  const [validateModel, setValidateModel] = useState(true);
+  const [state, setState] = useState<AsyncState>({ status: "idle" });
+
+  async function load() {
+    setState({ status: "loading" });
+    try {
+      const next = await getModelConfig();
+      setConfig(next);
+      setSelectedModelId(next.active_chat_model_id);
+      setProvider(next.active_chat_provider);
+      setState({ status: "success", message: "Model config loaded" });
+    } catch (error) {
+      setState({ status: "error", message: getErrorMessage(error) });
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const modelId = useCustom ? customModelId.trim() : selectedModelId;
+    if (!modelId) {
+      setState({ status: "error", message: "Choose or enter a model ID" });
+      return;
+    }
+
+    setState({ status: "loading" });
+    try {
+      const next = await updateChatModel({
+        model_id: modelId,
+        provider,
+        validate: validateModel,
+      });
+      setConfig(next);
+      setSelectedModelId(next.active_chat_model_id);
+      setProvider(next.active_chat_provider);
+      setUseCustom(false);
+      setCustomModelId("");
+      setState({ status: "success", message: `Active model: ${next.active_chat_model_id}` });
+    } catch (error) {
+      setState({ status: "error", message: getErrorMessage(error) });
+    }
+  }
+
+  return (
+    <section className="view-grid models-page">
+      <header className="view-header">
+        <div>
+          <p className="eyebrow">OCI Generative AI</p>
+          <h2>Models</h2>
+        </div>
+        <StateBadge state={state} />
+      </header>
+
+      <section className="model-summary-grid">
+        <article className="model-summary-card">
+          <span>Active chat model</span>
+          <strong>{config?.active_chat_model_id ?? "Loading"}</strong>
+          <p>Used by Chat with Memory and the /chat API endpoint.</p>
+        </article>
+        <article className="model-summary-card">
+          <span>Embedding model</span>
+          <strong>{config?.embedding_model_id ?? "Loading"}</strong>
+          <p>
+            Fixed at {config?.embedding_dimensions ?? 1024} dimensions for the current vector schema.
+          </p>
+        </article>
+      </section>
+
+      <form className="model-settings" onSubmit={submit}>
+        <div className="model-settings-header">
+          <div>
+            <h3>Switch chat LLM</h3>
+            <p>
+              Changing the chat model affects future answers only. Stored memories and embeddings are not rewritten.
+            </p>
+          </div>
+          <button type="button" className="secondary-button" onClick={load}>
+            <RefreshCw size={18} />
+            Refresh
+          </button>
+        </div>
+
+        <div className="model-option-list">
+          {config?.chat_model_options.map((option) => (
+            <label
+              className={`model-option ${!useCustom && selectedModelId === option.model_id ? "selected" : ""}`}
+              key={option.model_id}
+            >
+              <input
+                type="radio"
+                name="chat-model"
+                checked={!useCustom && selectedModelId === option.model_id}
+                onChange={() => {
+                  setUseCustom(false);
+                  setSelectedModelId(option.model_id);
+                  setProvider(option.provider);
+                }}
+              />
+              <div>
+                <strong>{option.label}</strong>
+                <code>{option.model_id}</code>
+                <p>{option.description}</p>
+              </div>
+            </label>
+          ))}
+        </div>
+
+        <label className={`model-option custom ${useCustom ? "selected" : ""}`}>
+          <input
+            type="radio"
+            name="chat-model"
+            checked={useCustom}
+            onChange={() => setUseCustom(true)}
+          />
+          <div className="custom-model-fields">
+            <strong>Custom OCI chat model</strong>
+            <div className="field-row two">
+              <Field label="Model ID">
+                <input
+                  value={customModelId}
+                  onChange={(event) => {
+                    setUseCustom(true);
+                    setCustomModelId(event.target.value);
+                  }}
+                  placeholder="cohere.command-a-03-2025"
+                />
+              </Field>
+              <Field label="Provider">
+                <input value={provider} onChange={(event) => setProvider(event.target.value)} />
+              </Field>
+            </div>
+          </div>
+        </label>
+
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={validateModel}
+            onChange={(event) => setValidateModel(event.target.checked)}
+          />
+          Validate model with OCI before saving
+        </label>
+
+        <div className="action-row">
+          <button className="primary-button" disabled={state.status === "loading"}>
+            {state.status === "loading" ? <Loader2 size={18} className="spin" /> : <SlidersHorizontal size={18} />}
+            Save Active Model
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

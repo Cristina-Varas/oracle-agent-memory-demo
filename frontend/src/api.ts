@@ -33,6 +33,22 @@ export type NewMemory = {
   source?: string | null;
 };
 
+export type ChatModelOption = {
+  model_id: string;
+  provider: string;
+  label: string;
+  description: string;
+};
+
+export type ModelConfig = {
+  active_chat_model_id: string;
+  active_chat_provider: string;
+  embedding_model_id: string;
+  embedding_dimensions: number;
+  chat_model_options: ChatModelOption[];
+  runtime_config_file: string;
+};
+
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const API_KEY = import.meta.env.VITE_AGENT_MEMORY_API_KEY ?? "";
 
@@ -70,6 +86,17 @@ export function getHealth() {
 
 export function getCategories() {
   return request<{ categories: string[] }>("/config/categories");
+}
+
+export function getModelConfig() {
+  return request<ModelConfig>("/models");
+}
+
+export function updateChatModel(params: { model_id: string; provider: string; validate: boolean }) {
+  return request<ModelConfig>("/models/chat", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
 }
 
 export function createMemory(payload: NewMemory) {

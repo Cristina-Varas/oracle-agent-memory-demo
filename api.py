@@ -15,9 +15,11 @@ from memory_service import (
     add_memory,
     chat_with_memory,
     delete_memory,
+    get_model_config,
     get_memory_client,
     list_memories,
     search_memories,
+    set_chat_model,
 )
 
 
@@ -132,6 +134,28 @@ class CategoriesResponse(BaseModel):
     categories: list[str]
 
 
+class ChatModelOption(BaseModel):
+    model_id: str
+    provider: str
+    label: str
+    description: str
+
+
+class ModelConfigResponse(BaseModel):
+    active_chat_model_id: str
+    active_chat_provider: str
+    embedding_model_id: str
+    embedding_dimensions: int
+    chat_model_options: list[ChatModelOption]
+    runtime_config_file: str
+
+
+class ModelUpdateRequest(BaseModel):
+    model_id: str = Field(..., min_length=1, description="OCI Generative AI chat model ID.")
+    provider: str = Field(default="cohere", min_length=1, description="Model provider for langchain-oci.")
+    validate: bool = Field(default=True, description="Validate model by making a short OCI GenAI call before saving.")
+
+
 def verify_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
     if not API_KEY:
         return
@@ -213,6 +237,45 @@ def deep_health(_: None = api_key_dependency) -> HealthResponse:
 )
 def categories(_: None = api_key_dependency) -> CategoriesResponse:
     return CategoriesResponse(categories=CATEGORIES)
+
+
+@app.get(
+    "/models",
+    response_model=ModelConfigResponse,
+    tags=["Configuration"],
+    summary="Get active OCI model configuration",
+    description="Returns the active chat model, fixed embedding model and selectable chat model options.",
+)
+def models(_: None = api_key_dependency) -> ModelConfigResponse:
+    try:
+        return ModelConfigResponse(**get_model_config())
+    except MemoryServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post(
+    "/models/chat",
+    response_model=ModelConfigResponse,
+    tags=["Configuration"],
+    summary="Set active OCI chat model",
+    description=(
+        "Updates the runtime chat model used by /chat. The embedding model is intentionally fixed "
+        "because changing it can require a different vector dimension and schema."
+    ),
+)
+def update_chat_model(payload: ModelUpdateRequest, _: None = api_key_dependency) -> ModelConfigResponse:
+    try:
+        return ModelConfigResponse(
+            **set_chat_model(
+                model_id=payload.model_id,
+                provider=payload.provider,
+                validate=payload.validate,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MemoryServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.post(

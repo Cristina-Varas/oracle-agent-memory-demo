@@ -307,7 +307,7 @@ button {
 
 .home-card-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
 }
 
@@ -375,6 +375,139 @@ button {
 .doc-link:hover {
   border-color: #9fb0c3;
   background: #f8fafc;
+}
+
+.models-page {
+  max-width: 1180px;
+}
+
+.model-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.model-summary-card,
+.model-settings {
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(21, 31, 45, 0.04);
+}
+
+.model-summary-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.model-summary-card span {
+  color: #6d7785;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.model-summary-card strong {
+  overflow-wrap: anywhere;
+  font-size: 20px;
+}
+
+.model-summary-card p {
+  margin: 0;
+  color: #617084;
+  line-height: 1.45;
+}
+
+.model-settings {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.model-settings-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.model-settings-header h3,
+.model-settings-header p {
+  margin: 0;
+}
+
+.model-settings-header h3 {
+  font-size: 20px;
+}
+
+.model-settings-header p {
+  margin-top: 6px;
+  color: #617084;
+}
+
+.model-option-list {
+  display: grid;
+  gap: 10px;
+}
+
+.model-option {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #d8e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.model-option.selected {
+  border-color: #9b2c24;
+  background: #fff8f7;
+}
+
+.model-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.model-option strong {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.model-option code {
+  display: inline-flex;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #516170;
+  font-size: 12px;
+}
+
+.model-option p {
+  margin: 8px 0 0;
+  color: #617084;
+  line-height: 1.45;
+}
+
+.custom-model-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.checkbox-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: #394758;
+  font-weight: 700;
+}
+
+.checkbox-row input {
+  width: 17px;
+  height: 17px;
 }
 
 .form-surface,
@@ -945,12 +1078,14 @@ tbody tr:hover {
   .conversation-shell,
   .chat-filters,
   .home-info-grid,
-  .home-card-grid {
+  .home-card-grid,
+  .model-summary-grid {
     grid-template-columns: 1fr;
   }
 
   .home-hero,
-  .home-docs {
+  .home-docs,
+  .model-settings-header {
     display: grid;
   }
 

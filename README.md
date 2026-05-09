@@ -132,8 +132,44 @@ Both UIs support:
 - Search Memories
 - Chat with Memory
 - Manage Memories
+- Models
 
 Chat is read-only. It searches existing memories and sends that context to the chat model, but it never creates or updates memory records.
+
+## Model Management
+
+The React application includes a **Models** page. It shows the active OCI chat model, the fixed embedding model and dimensions, selectable OCI chat model options, and a custom chat model field.
+
+The embedding model is shown but not changed from the UI because changing embeddings can require a different vector dimension and database schema. The chat model can be changed at runtime.
+
+Runtime chat model overrides are saved locally in:
+
+```text
+.runtime_config.json
+```
+
+This file is ignored by Git.
+
+Get the active model configuration:
+
+```bash
+curl -H "X-API-Key: your-key" http://localhost:8000/models
+```
+
+Set the active chat model:
+
+```bash
+curl -X POST http://localhost:8000/models/chat \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-key" \
+  -d '{
+    "model_id": "cohere.command-a-03-2025",
+    "provider": "cohere",
+    "validate": true
+  }'
+```
+
+When `validate` is `true`, the backend makes a short OCI Generative AI call before saving the model.
 
 ## FastAPI Endpoints
 
@@ -152,6 +188,8 @@ GET    /memories
 POST   /search
 POST   /chat
 DELETE /memories/{memory_id}
+GET    /models
+POST   /models/chat
 ```
 
 All error responses use this JSON shape:

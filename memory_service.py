@@ -33,6 +33,40 @@ DEFAULT_EMBED_MODEL_ID = "cohere.embed-english-v3.0"
 DEFAULT_CHAT_MODEL_ID = "cohere.command-a-03-2025"
 DEFAULT_EMBED_DIMENSIONS = 1024
 DEFAULT_TABLE_PREFIX = "APP_"
+RUNTIME_CONFIG_FILE = Path(".runtime_config.json")
+
+CHAT_MODEL_OPTIONS = [
+    {
+        "model_id": "cohere.command-a-03-2025",
+        "provider": "cohere",
+        "label": "Cohere Command A",
+        "description": "Default high-quality model for RAG, agents, tool use and multilingual use cases.",
+    },
+    {
+        "model_id": "cohere.command-r-08-2024",
+        "provider": "cohere",
+        "label": "Cohere Command R 08-2024",
+        "description": "Balanced model for retrieval, conversation and lower-latency enterprise workflows.",
+    },
+    {
+        "model_id": "cohere.command-r-plus-08-2024",
+        "provider": "cohere",
+        "label": "Cohere Command R+ 08-2024",
+        "description": "Stronger model for complex RAG, reasoning and multi-step responses.",
+    },
+    {
+        "model_id": "cohere.command-latest",
+        "provider": "cohere",
+        "label": "Cohere Command latest alias",
+        "description": "Alias that follows the latest Command R family version where available.",
+    },
+    {
+        "model_id": "cohere.command-plus-latest",
+        "provider": "cohere",
+        "label": "Cohere Command plus latest alias",
+        "description": "Alias that follows the latest Command R+ family version where available.",
+    },
+]
 
 
 class MemoryServiceError(Exception):
@@ -85,6 +119,35 @@ class MemoryClient:
 
 def get_memory_client() -> MemoryClient:
     return _get_memory_client()
+
+
+def get_model_config() -> dict[str, Any]:
+    load_dotenv()
+    env = _load_settings()
+    return {
+        "active_chat_model_id": env["OCI_CHAT_MODEL_ID"],
+        "active_chat_provider": env["OCI_CHAT_PROVIDER"],
+        "embedding_model_id": env["OCI_EMBED_MODEL_ID"],
+        "embedding_dimensions": env["OCI_EMBED_DIMENSIONS"],
+        "chat_model_options": CHAT_MODEL_OPTIONS,
+        "runtime_config_file": str(RUNTIME_CONFIG_FILE),
+    }
+
+
+def set_chat_model(model_id: str, provider: str = "cohere", validate: bool = True) -> dict[str, Any]:
+    model_id = model_id.strip()
+    provider = provider.strip() or "cohere"
+    if not model_id:
+        raise ValueError("model_id is required.")
+    if validate:
+        _validate_chat_model(model_id, provider)
+
+    config = _read_runtime_config()
+    config["OCI_CHAT_MODEL_ID"] = model_id
+    config["OCI_CHAT_PROVIDER"] = provider
+    _write_runtime_config(config)
+    _get_memory_client.cache_clear()
+    return get_model_config()
 
 
 def add_memory(
@@ -256,6 +319,7 @@ def _get_memory_client() -> MemoryClient:
 
 
 def _load_settings() -> dict[str, Any]:
+    runtime_config = _read_runtime_config()
     env = {
         "DB_USER": os.getenv("DB_USER"),
         "DB_PASSWORD": os.getenv("DB_PASSWORD"),
@@ -267,7 +331,14 @@ def _load_settings() -> dict[str, Any]:
         "OCI_EMBED_DIMENSIONS": int(
             os.getenv("OCI_EMBED_DIMENSIONS", str(DEFAULT_EMBED_DIMENSIONS))
         ),
-        "OCI_CHAT_MODEL_ID": os.getenv("OCI_CHAT_MODEL_ID", DEFAULT_CHAT_MODEL_ID),
+        "OCI_CHAT_MODEL_ID": runtime_config.get(
+            "OCI_CHAT_MODEL_ID",
+            os.getenv("OCI_CHAT_MODEL_ID", DEFAULT_CHAT_MODEL_ID),
+        ),
+        "OCI_CHAT_PROVIDER": runtime_config.get(
+            "OCI_CHAT_PROVIDER",
+            os.getenv("OCI_CHAT_PROVIDER", "cohere"),
+        ),
         "MEMORY_TABLE_PREFIX": os.getenv("MEMORY_TABLE_PREFIX", DEFAULT_TABLE_PREFIX),
     }
     missing = [key for key, value in env.items() if key != "MEMORY_TABLE_PREFIX" and not value]
@@ -340,7 +411,7 @@ def _create_llm(env: dict[str, Any]) -> OCIChatLlm:
             service_endpoint=env["OCI_GENAI_ENDPOINT"],
             compartment_id=env["OCI_COMPARTMENT_ID"],
             model_id=env["OCI_CHAT_MODEL_ID"],
-            provider="cohere",
+            provider=env["OCI_CHAT_PROVIDER"],
             model_kwargs={"temperature": 0, "max_tokens": 512},
         )
         llm = OCIChatLlm(chat)
@@ -348,6 +419,28 @@ def _create_llm(env: dict[str, Any]) -> OCIChatLlm:
         return llm
     except Exception as exc:
         raise ChatModelError(f"Chat model could not be initialized: {exc}") from exc
+
+
+def _validate_chat_model(model_id: str, provider: str) -> None:
+    load_dotenv()
+    env = _load_settings()
+    env["OCI_CHAT_MODEL_ID"] = model_id
+    env["OCI_CHAT_PROVIDER"] = provider
+    _validate_oci_config(env["OCI_CONFIG_FILE"])
+    _create_llm(env)
+
+
+def _read_runtime_config() -> dict[str, Any]:
+    if not RUNTIME_CONFIG_FILE.exists():
+        return {}
+    try:
+        return json.loads(RUNTIME_CONFIG_FILE.read_text())
+    except json.JSONDecodeError as exc:
+        raise ConfigurationError(f"Invalid runtime config JSON: {exc}") from exc
+
+
+def _write_runtime_config(config: dict[str, Any]) -> None:
+    RUNTIME_CONFIG_FILE.write_text(json.dumps(config, indent=2, sort_keys=True) + "\n")
 
 
 def _create_memory_client(
