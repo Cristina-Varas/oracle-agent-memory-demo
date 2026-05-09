@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   ChatResponse,
+  DatabaseConfig,
   ModelConfig,
   MemoryRecord,
   UsedMemory,
@@ -26,6 +27,7 @@ import {
   createMemory,
   deleteMemory,
   getCategories,
+  getDatabaseConfig,
   getHealth,
   getModelConfig,
   listMemories,
@@ -68,6 +70,7 @@ function App() {
   const [view, setView] = useState<View>("home");
   const [categories, setCategories] = useState(fallbackCategories);
   const [apiStatus, setApiStatus] = useState<"checking" | "ok" | "down">("checking");
+  const [databaseConfig, setDatabaseConfig] = useState<DatabaseConfig | null>(null);
 
   useEffect(() => {
     getHealth()
@@ -76,6 +79,9 @@ function App() {
     getCategories()
       .then((response) => setCategories(response.categories))
       .catch(() => setCategories(fallbackCategories));
+    getDatabaseConfig()
+      .then((response) => setDatabaseConfig(response))
+      .catch(() => setDatabaseConfig(null));
   }, []);
 
   return (
@@ -134,10 +140,11 @@ function App() {
           <span />
           {apiStatus === "checking" ? "Checking API" : apiStatus === "ok" ? "API online" : "API offline"}
         </div>
+        <DatabaseMiniPanel config={databaseConfig} />
       </aside>
 
       <main className="workspace">
-        {view === "home" && <HomeView onNavigate={setView} />}
+        {view === "home" && <HomeView onNavigate={setView} databaseConfig={databaseConfig} />}
         {view === "add" && <AddMemoryView categories={categories} />}
         {view === "search" && <SearchView categories={categories} />}
         {view === "chat" && <ChatView categories={categories} />}
@@ -167,7 +174,27 @@ function NavButton({
   );
 }
 
-function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
+function DatabaseMiniPanel({ config }: { config: DatabaseConfig | null }) {
+  return (
+    <section className="database-mini-panel">
+      <div>
+        <Database size={16} />
+        <span>Active database</span>
+      </div>
+      <strong>{config?.database_name ?? config?.db_user ?? "Loading"}</strong>
+      <p>{config?.connection_type ?? "Connection summary"}</p>
+      {config?.service_name && <code>{config.service_name}</code>}
+    </section>
+  );
+}
+
+function HomeView({
+  onNavigate,
+  databaseConfig,
+}: {
+  onNavigate: (view: View) => void;
+  databaseConfig: DatabaseConfig | null;
+}) {
   return (
     <section className="home-page">
       <header className="home-title">
@@ -215,6 +242,38 @@ function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
             In this demo, memory is persisted in Oracle Autonomous Database, indexed with OCI
             Generative AI embeddings, and retrieved semantically through Oracle Agent Memory.
           </p>
+        </article>
+        <article className="home-info-card database-status-card">
+          <h3>Connected database</h3>
+          <dl>
+            <div>
+              <dt>Type</dt>
+              <dd>{databaseConfig?.connection_type ?? "Loading"}</dd>
+            </div>
+            <div>
+              <dt>Database</dt>
+              <dd>{databaseConfig?.database_name ?? "Not reported"}</dd>
+            </div>
+            <div>
+              <dt>Schema</dt>
+              <dd>{databaseConfig?.current_schema ?? databaseConfig?.db_user ?? "Not reported"}</dd>
+            </div>
+            <div>
+              <dt>Service</dt>
+              <dd>{databaseConfig?.service_name ?? databaseConfig?.database_service ?? "Not reported"}</dd>
+            </div>
+            <div>
+              <dt>Security</dt>
+              <dd>{databaseConfig?.tls_enabled ? "TLS enabled" : "TLS not detected"}</dd>
+            </div>
+            <div>
+              <dt>Memory tables</dt>
+              <dd>{databaseConfig?.table_prefix ? `${databaseConfig.table_prefix}*` : "Not reported"}</dd>
+            </div>
+          </dl>
+          {databaseConfig?.connection_check_error && (
+            <p className="inline-warning">{databaseConfig.connection_check_error}</p>
+          )}
         </article>
         <article className="home-info-card">
           <h3>What can you do here?</h3>

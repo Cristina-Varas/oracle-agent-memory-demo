@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -132,6 +133,48 @@ def get_model_config() -> dict[str, Any]:
         "chat_model_options": CHAT_MODEL_OPTIONS,
         "runtime_config_file": str(RUNTIME_CONFIG_FILE),
     }
+
+
+def get_database_config() -> dict[str, Any]:
+    load_dotenv()
+    env = _load_settings()
+    connection = _describe_connect_string(env["CONNECT_STRING"])
+    result = {
+        "db_user": env["DB_USER"],
+        "connection_type": connection["connection_type"],
+        "host": connection["host"],
+        "port": connection["port"],
+        "service_name": connection["service_name"],
+        "is_autonomous": connection["is_autonomous"],
+        "tls_enabled": connection["tls_enabled"],
+        "table_prefix": env["MEMORY_TABLE_PREFIX"],
+        "database_name": None,
+        "current_schema": None,
+        "database_service": None,
+    }
+
+    try:
+        client = get_memory_client()
+        with client.pool.acquire() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    select
+                        sys_context('USERENV', 'DB_NAME') as database_name,
+                        sys_context('USERENV', 'CURRENT_SCHEMA') as current_schema,
+                        sys_context('USERENV', 'SERVICE_NAME') as database_service
+                    from dual
+                    """
+                )
+                row = cur.fetchone()
+                if row:
+                    result["database_name"] = row[0]
+                    result["current_schema"] = row[1]
+                    result["database_service"] = row[2]
+    except Exception as exc:
+        result["connection_check_error"] = str(exc)
+
+    return result
 
 
 def set_chat_model(model_id: str, provider: str = "cohere", validate: bool = True) -> dict[str, Any]:
@@ -367,6 +410,40 @@ def _load_settings() -> dict[str, Any]:
             "CONNECT_STRING looks like a wallet alias. Use the full TLS connection string."
         )
     return env
+
+
+def _describe_connect_string(connect_string: str) -> dict[str, Any]:
+    text = connect_string.strip()
+    lower = text.lower()
+    host = _match_descriptor_value(text, "host")
+    port = _match_descriptor_value(text, "port")
+    service_name = _match_descriptor_value(text, "service_name")
+    protocol = _match_descriptor_value(text, "protocol")
+
+    if not host and "/" in text:
+        easy_connect, _, service = text.partition("/")
+        service_name = service_name or service or None
+        host_part, _, port_part = easy_connect.partition(":")
+        host = host or host_part or None
+        port = port or port_part or None
+
+    tls_enabled = protocol == "tcps" or "tcps" in lower or "port=1522" in lower
+    is_autonomous = "adb." in lower or ".adb.oraclecloud.com" in lower
+    connection_type = "Autonomous Database over TLS" if is_autonomous and tls_enabled else "Oracle Database"
+
+    return {
+        "connection_type": connection_type,
+        "host": host,
+        "port": port,
+        "service_name": service_name,
+        "is_autonomous": is_autonomous,
+        "tls_enabled": tls_enabled,
+    }
+
+
+def _match_descriptor_value(connect_string: str, key: str) -> str | None:
+    match = re.search(rf"\(\s*{re.escape(key)}\s*=\s*([^)]+?)\s*\)", connect_string, re.IGNORECASE)
+    return match.group(1).strip() if match else None
 
 
 def _validate_oci_config(config_file: str) -> None:

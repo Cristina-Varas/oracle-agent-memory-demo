@@ -15,6 +15,7 @@ from memory_service import (
     add_memory,
     chat_with_memory,
     delete_memory,
+    get_database_config,
     get_model_config,
     get_memory_client,
     list_memories,
@@ -139,6 +140,21 @@ class CategoriesResponse(BaseModel):
     categories: list[str]
 
 
+class DatabaseConfigResponse(BaseModel):
+    db_user: str
+    connection_type: str
+    host: str | None = None
+    port: str | None = None
+    service_name: str | None = None
+    is_autonomous: bool
+    tls_enabled: bool
+    table_prefix: str
+    database_name: str | None = None
+    current_schema: str | None = None
+    database_service: str | None = None
+    connection_check_error: str | None = None
+
+
 class ChatModelOption(BaseModel):
     model_id: str
     provider: str
@@ -249,6 +265,23 @@ def deep_health(_: None = api_key_dependency) -> HealthResponse:
 )
 def categories(_: None = api_key_dependency) -> CategoriesResponse:
     return CategoriesResponse(categories=CATEGORIES)
+
+
+@app.get(
+    "/config/database",
+    response_model=DatabaseConfigResponse,
+    tags=["Configuration"],
+    summary="Get active database connection summary",
+    description=(
+        "Returns non-sensitive information about the configured Oracle database connection. "
+        "The password and full connect descriptor are never returned."
+    ),
+)
+def database_config(_: None = api_key_dependency) -> DatabaseConfigResponse:
+    try:
+        return DatabaseConfigResponse(**get_database_config())
+    except MemoryServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.get(

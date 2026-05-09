@@ -53,6 +53,21 @@ export type ModelConfig = {
   runtime_config_file: string;
 };
 
+export type DatabaseConfig = {
+  db_user: string;
+  connection_type: string;
+  host: string | null;
+  port: string | null;
+  service_name: string | null;
+  is_autonomous: boolean;
+  tls_enabled: boolean;
+  table_prefix: string;
+  database_name: string | null;
+  current_schema: string | null;
+  database_service: string | null;
+  connection_check_error?: string | null;
+};
+
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const API_KEY = import.meta.env.VITE_AGENT_MEMORY_API_KEY ?? "";
 
@@ -90,6 +105,10 @@ export function getHealth() {
 
 export function getCategories() {
   return request<{ categories: string[] }>("/config/categories");
+}
+
+export function getDatabaseConfig() {
+  return request<DatabaseConfig>("/config/database");
 }
 
 export function getModelConfig() {

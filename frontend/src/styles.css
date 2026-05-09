@@ -140,6 +140,44 @@ button {
   background: #be3b3b;
 }
 
+.database-mini-panel {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #dfe6ef;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.database-mini-panel div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #647184;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.database-mini-panel strong {
+  color: #182435;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.database-mini-panel p {
+  margin: 0;
+  color: #5d6b7a;
+  font-size: 13px;
+}
+
+.database-mini-panel code {
+  color: #7a1f1f;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .workspace {
   padding: 28px;
   overflow: auto;
@@ -294,6 +332,41 @@ button {
   margin-top: 12px;
   color: #617084;
   line-height: 1.6;
+}
+
+.database-status-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.database-status-card dl div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.database-status-card dt {
+  color: #647184;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.database-status-card dd {
+  margin: 0;
+  color: #263446;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.inline-warning {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+  color: #8a3b12;
+  background: #fff4e5;
+  font-size: 13px;
 }
 
 .home-info-card ul {
