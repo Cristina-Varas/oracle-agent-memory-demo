@@ -16,10 +16,14 @@ export type ChatResponse = {
 };
 
 export type UsedMemory = {
+  memory_id: string | null;
   title: string;
+  content: string;
   category: string;
   customer_project: string | null;
+  tags: string[];
   source: string | null;
+  created_at: string | null;
   score: number | null;
   content_preview: string;
 };

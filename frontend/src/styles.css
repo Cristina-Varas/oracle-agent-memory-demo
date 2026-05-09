@@ -965,6 +965,97 @@ textarea:focus {
   font-weight: 800;
 }
 
+.source-list {
+  display: grid;
+  gap: 10px;
+}
+
+.source-card {
+  border: 1px solid #dfe6ef;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.source-card summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.source-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.source-card summary h3 {
+  margin: 0;
+  color: #182435;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.source-card summary p {
+  margin: 4px 0 0;
+  color: #647184;
+  font-size: 12px;
+}
+
+.source-card summary > span {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #1f6a43;
+  background: #eaf7f0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.source-card .memory-content,
+.source-card .meta-row,
+.source-card .tag-row,
+.source-actions,
+.source-full-content {
+  margin: 0 12px 12px;
+}
+
+.source-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #647184;
+  font-size: 13px;
+}
+
+.source-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #9b2c24;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.source-actions a:hover {
+  text-decoration: underline;
+}
+
+.source-full-content {
+  max-height: 360px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid #e6ecf4;
+  border-radius: 8px;
+  color: #263446;
+  background: #f8fafc;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .chat-output {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);

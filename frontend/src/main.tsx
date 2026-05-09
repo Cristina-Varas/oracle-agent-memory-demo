@@ -274,7 +274,7 @@ function HomeView({ onNavigate }: { onNavigate: (view: View) => void }) {
           </a>
           <a
             className="doc-link"
-            href="https://www.oracle.com/artificial-intelligence/ai-agent-memory/"
+            href="https://www.oracle.com/database/ai-agent-memory/"
             target="_blank"
             rel="noreferrer"
           >
@@ -962,25 +962,53 @@ function UsedMemoryList({ records }: { records: UsedMemory[] }) {
   }
 
   return (
-    <div className="memory-list compact">
+    <div className="source-list">
       {records.map((record, index) => (
-        <article className="memory-card" key={`${record.title}-${index}`}>
-          <div className="memory-card-top">
+        <details className="source-card" key={record.memory_id ?? `${record.title}-${index}`}>
+          <summary>
             <div>
               <h3>{record.title}</h3>
-              <p>{record.category}</p>
+              <p>
+                {record.category}
+                {record.customer_project ? ` · ${record.customer_project}` : ""}
+              </p>
             </div>
-          </div>
+            <span>{record.score !== null ? record.score.toFixed(3) : "open"}</span>
+          </summary>
           <p className="memory-content">{record.content_preview}</p>
           <div className="meta-row">
-            {record.customer_project && <span>{record.customer_project}</span>}
-            {record.source && <span>{record.source}</span>}
+            {record.memory_id && <code>{record.memory_id}</code>}
+            {record.created_at && <span>{formatDate(record.created_at)}</span>}
             {record.score !== null && <span>Score {record.score.toFixed(3)}</span>}
           </div>
-        </article>
+          {!!record.tags.length && (
+            <div className="tag-row">
+              {record.tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          )}
+          <div className="source-actions">
+            {record.source ? <SourceValue source={record.source} /> : <span>No external source</span>}
+          </div>
+          <div className="source-full-content">{record.content || record.content_preview}</div>
+        </details>
       ))}
     </div>
   );
+}
+
+function SourceValue({ source }: { source: string }) {
+  if (isHttpUrl(source)) {
+    return (
+      <a href={source} target="_blank" rel="noreferrer">
+        <ExternalLink size={15} />
+        Open source
+      </a>
+    );
+  }
+
+  return <span>Source: {source}</span>;
 }
 
 function ChatBubble({ message }: { message: ChatMessage }) {
@@ -1045,6 +1073,15 @@ function toPlainAnswer(value: string) {
     .replace(/^\s*[-*]\s+/gm, "")
     .replace(/^\s*\d+\.\s+/gm, "")
     .trim();
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function userInitial() {

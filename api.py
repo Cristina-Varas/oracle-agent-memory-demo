@@ -108,10 +108,14 @@ class SearchResponse(BaseModel):
 
 
 class UsedMemoryResponse(BaseModel):
+    memory_id: str | None = None
     title: str
+    content: str
     category: str
     customer_project: str | None = None
+    tags: list[str] = Field(default_factory=list)
     source: str | None = None
+    created_at: str | None = None
     score: float | None = None
     content_preview: str
 
@@ -467,10 +471,14 @@ def _to_memory_response(record: dict[str, Any]) -> MemoryResponse:
 def _to_used_memory(record: dict[str, Any]) -> UsedMemoryResponse:
     content = record.get("content") or ""
     return UsedMemoryResponse(
+        memory_id=record.get("memory_id"),
         title=record.get("title") or "Untitled",
+        content=content,
         category=record.get("category") or "Internal Notes",
         customer_project=record.get("customer_project"),
+        tags=record.get("tags") or [],
         source=record.get("source"),
+        created_at=record.get("created_at"),
         score=record.get("score"),
         content_preview=_preview(content),
     )
