@@ -99,6 +99,13 @@ export function updateChatModel(params: { model_id: string; provider: string; va
   });
 }
 
+export function testChatModel(params: { model_id: string; provider: string }) {
+  return request<{ status: string; model_id: string; provider: string; message: string }>("/models/chat/test", {
+    method: "POST",
+    body: JSON.stringify({ ...params, validate: true }),
+  });
+}
+
 export function createMemory(payload: NewMemory) {
   return request<{ memory_id: string }>("/memories", {
     method: "POST",

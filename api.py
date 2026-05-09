@@ -20,6 +20,7 @@ from memory_service import (
     list_memories,
     search_memories,
     set_chat_model,
+    test_chat_model,
 )
 
 
@@ -156,6 +157,13 @@ class ModelUpdateRequest(BaseModel):
     validate: bool = Field(default=True, description="Validate model by making a short OCI GenAI call before saving.")
 
 
+class ModelTestResponse(BaseModel):
+    status: str
+    model_id: str
+    provider: str
+    message: str
+
+
 def verify_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
     if not API_KEY:
         return
@@ -270,6 +278,27 @@ def update_chat_model(payload: ModelUpdateRequest, _: None = api_key_dependency)
                 model_id=payload.model_id,
                 provider=payload.provider,
                 validate=payload.validate,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except MemoryServiceError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post(
+    "/models/chat/test",
+    response_model=ModelTestResponse,
+    tags=["Configuration"],
+    summary="Test OCI chat model connection",
+    description="Validates a chat model with a short OCI GenAI call without saving it as the active model.",
+)
+def test_chat_model_endpoint(payload: ModelUpdateRequest, _: None = api_key_dependency) -> ModelTestResponse:
+    try:
+        return ModelTestResponse(
+            **test_chat_model(
+                model_id=payload.model_id,
+                provider=payload.provider,
             )
         )
     except ValueError as exc:

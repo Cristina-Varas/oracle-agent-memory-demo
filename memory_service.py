@@ -150,6 +150,20 @@ def set_chat_model(model_id: str, provider: str = "cohere", validate: bool = Tru
     return get_model_config()
 
 
+def test_chat_model(model_id: str, provider: str = "cohere") -> dict[str, Any]:
+    model_id = model_id.strip()
+    provider = provider.strip() or "cohere"
+    if not model_id:
+        raise ValueError("model_id is required.")
+    _validate_chat_model(model_id, provider)
+    return {
+        "status": "ok",
+        "model_id": model_id,
+        "provider": provider,
+        "message": "Model connection test successful.",
+    }
+
+
 def add_memory(
     title: str,
     content: str,

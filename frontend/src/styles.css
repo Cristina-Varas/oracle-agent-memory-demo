@@ -602,6 +602,8 @@ textarea:focus {
   display: flex;
   align-items: end;
   justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .primary-button,
@@ -770,6 +772,35 @@ textarea:focus {
 
 .chat-page {
   max-width: 1280px;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.active-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(420px, 100%);
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #d8e0ea;
+  border-radius: 999px;
+  color: #394758;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.active-model-pill svg {
+  color: #9b2c24;
+  flex: 0 0 auto;
 }
 
 .conversation-shell {

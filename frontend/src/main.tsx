@@ -30,6 +30,7 @@ import {
   getModelConfig,
   listMemories,
   searchMemories,
+  testChatModel,
   updateChatModel,
 } from "./api";
 import "./styles.css";
@@ -466,7 +467,14 @@ function ChatView({ categories }: { categories: string[] }) {
     },
   ]);
   const [state, setState] = useState<AsyncState>({ status: "idle" });
+  const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
   const latestSources = [...messages].reverse().find((message) => message.sources?.length)?.sources ?? [];
+
+  useEffect(() => {
+    getModelConfig()
+      .then(setModelConfig)
+      .catch(() => setModelConfig(null));
+  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -510,7 +518,13 @@ function ChatView({ categories }: { categories: string[] }) {
           <p className="eyebrow">Conversational read only</p>
           <h2>Chat with Memory</h2>
         </div>
-        <StateBadge state={state} />
+        <div className="chat-header-actions">
+          <div className="active-model-pill">
+            <SlidersHorizontal size={15} />
+            {modelConfig?.active_chat_model_id ?? "Model loading"}
+          </div>
+          <StateBadge state={state} />
+        </div>
       </header>
 
       <div className="conversation-shell">
@@ -694,6 +708,14 @@ function ModelsView() {
   const [useCustom, setUseCustom] = useState(false);
   const [validateModel, setValidateModel] = useState(true);
   const [state, setState] = useState<AsyncState>({ status: "idle" });
+  const [testState, setTestState] = useState<AsyncState>({ status: "idle" });
+
+  function selectedCandidate() {
+    return {
+      modelId: useCustom ? customModelId.trim() : selectedModelId,
+      provider,
+    };
+  }
 
   async function load() {
     setState({ status: "loading" });
@@ -714,7 +736,7 @@ function ModelsView() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    const modelId = useCustom ? customModelId.trim() : selectedModelId;
+    const { modelId, provider: selectedProvider } = selectedCandidate();
     if (!modelId) {
       setState({ status: "error", message: "Choose or enter a model ID" });
       return;
@@ -724,7 +746,7 @@ function ModelsView() {
     try {
       const next = await updateChatModel({
         model_id: modelId,
-        provider,
+        provider: selectedProvider,
         validate: validateModel,
       });
       setConfig(next);
@@ -735,6 +757,25 @@ function ModelsView() {
       setState({ status: "success", message: `Active model: ${next.active_chat_model_id}` });
     } catch (error) {
       setState({ status: "error", message: getErrorMessage(error) });
+    }
+  }
+
+  async function testSelectedModel() {
+    const { modelId, provider: selectedProvider } = selectedCandidate();
+    if (!modelId) {
+      setTestState({ status: "error", message: "Choose or enter a model ID" });
+      return;
+    }
+
+    setTestState({ status: "loading" });
+    try {
+      const result = await testChatModel({
+        model_id: modelId,
+        provider: selectedProvider,
+      });
+      setTestState({ status: "success", message: result.message });
+    } catch (error) {
+      setTestState({ status: "error", message: getErrorMessage(error) });
     }
   }
 
@@ -776,6 +817,7 @@ function ModelsView() {
             Refresh
           </button>
         </div>
+        <StateBadge state={testState} />
 
         <div className="model-option-list">
           {config?.chat_model_options.map((option) => (
@@ -839,6 +881,15 @@ function ModelsView() {
         </label>
 
         <div className="action-row">
+          <button
+            className="secondary-button"
+            disabled={testState.status === "loading" || state.status === "loading"}
+            onClick={testSelectedModel}
+            type="button"
+          >
+            {testState.status === "loading" ? <Loader2 size={18} className="spin" /> : <Check size={18} />}
+            Test Model
+          </button>
           <button className="primary-button" disabled={state.status === "loading"}>
             {state.status === "loading" ? <Loader2 size={18} className="spin" /> : <SlidersHorizontal size={18} />}
             Save Active Model
