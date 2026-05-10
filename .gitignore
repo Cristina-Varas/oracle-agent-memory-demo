@@ -1,5 +1,6 @@
 .env
 .runtime_config.json
+.run/
 .venv/
 __pycache__/
 *.pyc

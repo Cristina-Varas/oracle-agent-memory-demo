@@ -120,6 +120,27 @@ If `AGENT_MEMORY_API_KEY` is enabled in the backend, pass the same key to the fr
 VITE_AGENT_MEMORY_API_KEY=your-key npm run dev
 ```
 
+## Refresh Ngrok For APEX
+
+When APEX runs in Autonomous Database, it cannot call `localhost:8000`. Use ngrok to expose the local FastAPI backend through a temporary public URL.
+
+The helper script starts FastAPI if needed, starts or reuses an ngrok tunnel, tests `/health`, and prints the APEX initialization block:
+
+```bash
+scripts/refresh_ngrok.sh
+```
+
+Use the printed values in your APEX application initialization process:
+
+```plsql
+begin
+    :G_AGENT_MEMORY_API_URL := 'https://your-current-ngrok-url.ngrok-free.app';
+    :G_AGENT_MEMORY_API_KEY := 'your-key';
+end;
+```
+
+Free ngrok URLs can change whenever the tunnel is restarted. To avoid updating APEX every time, use a reserved/static ngrok domain or deploy the FastAPI backend to a stable public service.
+
 ## Run The Streamlit Demo
 
 ```bash
